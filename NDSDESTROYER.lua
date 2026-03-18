@@ -10,9 +10,9 @@ local Mouse = LocalPlayer:GetMouse()
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "God Parts V15 | Rayfield Edition",
+    Name = "God Parts V16 | The Apex Update",
     LoadingTitle = "Initializing God Parts...",
-    LoadingSubtitle = "by HeavenlyReminiscence",
+    LoadingSubtitle = "Loading framework...",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "GodPartsConfig",
@@ -25,6 +25,16 @@ local Window = Rayfield:CreateWindow({
     },
     KeySystem = false,
 })
+
+-- Personalized Welcome Notification
+if LocalPlayer.Name == "HeavenlyReminiscence" then
+    Rayfield:Notify({
+        Title = "Welcome back, Master",
+        Content = "<font color='rgb(255, 255, 0)'>HeavenlyReminiscence</font> recognized. Systems optimal.",
+        Duration = 5,
+        Image = 4483362458,
+    })
+end
 
 -- State Variables
 local radius = 30 
@@ -55,8 +65,10 @@ local trailsMap = {}
 local centipedePath = {}
 local pathRecordDist = 1.5
 
-local shapesList = {"Shield", "Rings", "Satellites", "Dragon", "Claw", "Punch", "Plane", "Wings", "Atom", "Centipede", "Circle", "Triangle", "Square", "Pentagram", "Hexagon", "Star", "3D Sphere", "3D Cube", "Tornado", "DNA", "Galaxy", "Black Hole"}
+-- Expanded Lists
+local shapesList = {"Shield", "Crown", "Swords", "Rings", "Satellites", "Dragon", "Claw", "Punch", "Plane", "Wings", "Atom", "Centipede", "Circle", "Triangle", "Square", "Pentagram", "Hexagon", "Star", "3D Sphere", "3D Cube", "Tornado", "DNA", "Galaxy", "Black Hole"}
 local patternsList = {"Spin", "Wave", "Worm", "Pulse", "Swarm"}
+local weaponsList = {"Burst", "Minigun", "Nova", "Rain"}
 
 -- Network Bypass & Part Retention
 if not getgenv().Network then
@@ -148,9 +160,9 @@ workspace.DescendantRemoving:Connect(removePart)
 
 -- ==== RAYFIELD TABS & ELEMENTS ====
 
-local MainTab = Window:CreateTab("Combat & Shapes", 4483362458) -- Sword icon
-local SettingsTab = Window:CreateTab("Adjustments", 4483345998) -- Gear icon
-local VisualsTab = Window:CreateTab("Visuals & Info", 4483362875) -- Eye icon
+local MainTab = Window:CreateTab("Combat & Shapes", 4483362458) 
+local SettingsTab = Window:CreateTab("Adjustments", 4483345998) 
+local VisualsTab = Window:CreateTab("Visuals & Info", 4483362875) 
 
 local PartCountLabel = VisualsTab:CreateLabel("Parts Controlled: 0")
 local CooldownLabel = MainTab:CreateLabel("Weapon Status: Ready")
@@ -202,7 +214,7 @@ MainTab:CreateDropdown({
 
 MainTab:CreateDropdown({
     Name = "Weapon Mode [Press/Hold F]",
-    Options = {"Burst", "Minigun", "Nova"},
+    Options = weaponsList,
     CurrentOption = {"Burst"},
     MultipleOptions = false,
     Flag = "WeaponDropdown",
@@ -325,7 +337,6 @@ RunService.Heartbeat:Connect(function()
     
     PartCountLabel:Set("Parts Controlled: " .. #parts)
 
-    -- Cooldown UI Logic
     if fireMode == "Burst" or fireMode == "Nova" then
         local timeSinceBurst = currentTick - lastBurstTime
         if timeSinceBurst >= burstCooldown then
@@ -337,17 +348,28 @@ RunService.Heartbeat:Connect(function()
         CooldownLabel:Set(isHoldingF and "Weapon Status: FIRING!" or "Weapon Status: READY [Hold F]")
     end
 
-    if fireMode == "Minigun" and isHoldingF then
+    -- Minigun / Rain Logic (Continuous Fire)
+    if (fireMode == "Minigun" or fireMode == "Rain") and isHoldingF then
         if currentTick - lastMinigunShot >= minigunRate then
             lastMinigunShot = currentTick
             if #parts > 0 then
                 minigunIndex = (minigunIndex % #parts) + 1
                 local partToFire = parts[minigunIndex]
                 if partToFire then
-                    partFireData[partToFire] = {
-                        endTime = currentTick + 1.5,
-                        targetVec = Mouse.Hit.Position + Vector3.new(math.random(-2, 2), math.random(-2, 2), math.random(-2, 2))
-                    }
+                    if fireMode == "Rain" then
+                        -- Teleport high up, then crash down
+                        local dropPos = Mouse.Hit.Position + Vector3.new(math.random(-15, 15), 100, math.random(-15, 15))
+                        partToFire.CFrame = CFrame.new(dropPos)
+                        partFireData[partToFire] = {
+                            endTime = currentTick + 2,
+                            targetVec = Mouse.Hit.Position
+                        }
+                    else
+                        partFireData[partToFire] = {
+                            endTime = currentTick + 1.5,
+                            targetVec = Mouse.Hit.Position + Vector3.new(math.random(-2, 2), math.random(-2, 2), math.random(-2, 2))
+                        }
+                    end
                 end
             end
         end
@@ -429,6 +451,7 @@ RunService.Heartbeat:Connect(function()
             end
             
             if not isFired then
+                -- SHAPE CALCULATIONS
                 if currentShape == "Shield" then
                     local phi = math.pi * (3 - math.sqrt(5))
                     local y = totalParts > 1 and (1 - ((i - 1) / (totalParts - 1)) * 2) or 0
@@ -436,7 +459,78 @@ RunService.Heartbeat:Connect(function()
                     local theta = phi * i + (currentTick * rotationSpeed) 
                     local sRad = activeRadius * 0.4
                     targetPos = center + Vector3.new(math.cos(theta) * r, y, math.sin(theta) * r) * sRad + Vector3.new(0, 3, 0)
+
+                elseif currentShape == "Crown" then
+                    local angle = (i / totalParts) * math.pi * 2 + timeOffset
+                    local r = activeRadius * 0.6
+                    local spike = math.abs(math.sin(angle * 5)) * (activeRadius * 0.5) -- 5 peaks
+                    targetPos = center + Vector3.new(math.cos(angle) * r, 5 + spike, math.sin(angle) * r)
                     
+                elseif currentShape == "Swords" then
+                    local numSwords = 4
+                    local swordId = i % numSwords
+                    local sParts = math.ceil(totalParts / numSwords)
+                    local pProgress = (math.floor(i / numSwords)) / math.max(1, sParts) -- 0 to 1 along the blade
+                    
+                    local rightVec = Vector3.new(0,1,0):Cross(playerLookDir).Unit
+                    local upVec = Vector3.new(0,1,0)
+                    local spread = (swordId - (numSwords/2) + 0.5) * (activeRadius * 0.5)
+                    
+                    local hiltPos = center - playerLookDir * (activeRadius * 0.5) + rightVec * spread + upVec * 2
+                    local bladeDir = (upVec * 2 + playerLookDir + rightVec * (spread * 0.05)).Unit
+                    
+                    targetPos = hiltPos + bladeDir * (pProgress * activeRadius * 2)
+
+                elseif currentShape == "Wings" then
+                    -- FIXED WINGS MATH: Proportion-based layout
+                    local side = (i % 2 == 0) and 1 or -1
+                    local wI = math.ceil(i / 2)
+                    local halfParts = math.max(1, math.floor(totalParts / 2))
+                    local p = wI / halfParts -- Progress along wing (0 to 1)
+                    
+                    local rightVector = Vector3.new(0,1,0):Cross(playerLookDir).Unit
+                    local wingSpread = rightVector * side * (p * activeRadius * 1.5)
+                    local wingBack = -playerLookDir * (activeRadius * 0.2 + p * activeRadius * 0.5)
+                    local wingFlap = math.sin(currentTick * rotationSpeed * 0.5 + (p * math.pi)) * (activeRadius * 0.3 * p)
+                    local wingCurve = Vector3.new(0, (1 - p) * (activeRadius * 0.5) + wingFlap, 0)
+                    
+                    targetPos = center + wingSpread + wingBack + wingCurve
+                    
+                elseif currentShape == "Dragon" then
+                    -- FIXED DRAGON MATH: Safe indexing and proper proportion linking
+                    local headCount = math.max(1, math.floor(totalParts * 0.1))
+                    local spineCount = math.floor(totalParts * 0.5)
+                    local wingCount = totalParts - headCount - spineCount
+                    
+                    if i <= headCount then
+                        local headPos = centipedePath[1] or center
+                        targetPos = headPos + Vector3.new(math.random(-1,1), math.random(-1,1), math.random(-1,1)) * (activeRadius * 0.2)
+                    elseif i <= headCount + spineCount then
+                        local sI = i - headCount
+                        local pathLen = #centipedePath
+                        local pIndex = math.max(1, math.floor((sI / spineCount) * pathLen))
+                        targetPos = centipedePath[pIndex] or center
+                    else
+                        local wI = i - headCount - spineCount
+                        local pathLen = #centipedePath
+                        -- Anchor wings to the front 20% of the spine
+                        local anchorIndex = math.max(1, math.floor(pathLen * 0.2))
+                        local midPos = centipedePath[anchorIndex] or center
+                        local nextPos = centipedePath[anchorIndex + 1] or midPos
+                        local dir = (midPos - nextPos)
+                        if dir.Magnitude < 0.001 then dir = Vector3.new(0,0,1) end
+                        dir = dir.Unit
+                        
+                        local right = Vector3.new(0,1,0):Cross(dir).Unit
+                        local up = dir:Cross(right).Unit
+                        local side = (wI % 2 == 0) and 1 or -1
+                        local p = math.ceil(wI / 2) / math.max(1, math.floor(wingCount / 2))
+                        
+                        local wLen = right * side * (p * activeRadius * 1.5)
+                        local flap = math.sin(currentTick * rotationSpeed + p * 2) * (p * activeRadius * 0.8)
+                        targetPos = midPos + wLen + up * flap - dir * (p * activeRadius * 0.5)
+                    end
+
                 elseif currentShape == "Rings" then
                     local ringGroup = i % 3
                     local ringParts = math.ceil(totalParts / 3)
@@ -460,35 +554,6 @@ RunService.Heartbeat:Connect(function()
                     local subTheta = (i / subParts) * math.pi * 2 + (currentTick * rotationSpeed * 1.5)
                     local subRad = activeRadius * 0.2
                     targetPos = moonCenter + Vector3.new(math.cos(subTheta)*subRad, math.sin(subTheta)*subRad, 0)
-
-                elseif currentShape == "Dragon" then
-                    local headCount = math.max(1, math.floor(totalParts * 0.1))
-                    local spineCount = math.floor(totalParts * 0.6)
-                    local wingCount = totalParts - headCount - spineCount
-                    
-                    if i <= headCount then
-                        local headPos = centipedePath[1] or center
-                        targetPos = headPos + Vector3.new(math.random(-1,1), math.random(-1,1), math.random(-1,1)) * (activeRadius * 0.2)
-                    elseif i <= headCount + spineCount then
-                        local sI = i - headCount
-                        local segmentIndex = math.ceil((sI / spineCount) * #centipedePath)
-                        targetPos = centipedePath[segmentIndex] or center
-                    else
-                        local wI = i - headCount - spineCount
-                        local midIndex = math.floor(#centipedePath / 3)
-                        local midPos = centipedePath[midIndex] or center
-                        local nextPos = centipedePath[midIndex + 1] or midPos
-                        local dir = (midPos - nextPos)
-                        if dir.Magnitude < 0.001 then dir = Vector3.new(0,0,1) end
-                        dir = dir.Unit
-                        local right = Vector3.new(0,1,0):Cross(dir).Unit
-                        local up = dir:Cross(right).Unit
-                        
-                        local side = (wI % 2 == 0) and 1 or -1
-                        local wLen = (wI / wingCount) * activeRadius * 2
-                        local flap = math.sin(currentTick * rotationSpeed) * wLen * 0.5
-                        targetPos = midPos + right * side * wLen + up * flap
-                    end
 
                 elseif currentShape == "Claw" then
                     local palmCount = math.floor(totalParts * 0.3)
@@ -549,23 +614,14 @@ RunService.Heartbeat:Connect(function()
                         targetPos = center - forward * (activeRadius * 1.5) + up * (p * activeRadius * 0.8)
                     end
 
-                elseif currentPattern == "Worm" and currentShape ~= "Centipede" and currentShape ~= "Wings" then
+                elseif currentPattern == "Worm" and currentShape ~= "Centipede" then
                     local slitherSpeed = rotationSpeed * 0.05
                     local spacing = 0.15
                     local t = (currentTick * slitherSpeed) - (i * spacing)
                     local slitherRadius = radius + math.sin(t * 3) * (radius * 0.2)
                     targetPos = center + Vector3.new(math.cos(t) * slitherRadius, math.sin(t * 4) * (radius * 0.2), math.sin(t) * slitherRadius)
                 else
-                    if currentShape == "Wings" then
-                        local side = (i % 2 == 0) and 1 or -1
-                        local wingIndex = math.ceil(i / 2)
-                        local spread = wingIndex * (activeRadius * 0.1)
-                        local wingFlap = math.sin(currentTick * rotationSpeed * 0.5 + (wingIndex * 0.1)) * (activeRadius * 0.2)
-                        local backOffset = -playerLookDir * (activeRadius * 0.2)
-                        local rightVector = Vector3.new(0,1,0):Cross(playerLookDir).Unit
-                        targetPos = center + backOffset + (rightVector * side * spread) + Vector3.new(0, wingIndex * (activeRadius * 0.05) + wingFlap, 0)
-                        
-                    elseif currentShape == "Atom" then
+                    if currentShape == "Atom" then
                         local ringGroup = i % 3
                         local theta = (i / totalParts) * math.pi * 2 + (currentTick * rotationSpeed)
                         if ringGroup == 0 then
