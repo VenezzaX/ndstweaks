@@ -1,3 +1,5 @@
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'),true))()
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/VenezzaX/GotoPunch/refs/heads/main/punch.lua'),true))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -18,9 +20,9 @@ local safeUIParent = getSafeParent()
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "God Parts V30 | Maximum Optimization",
+    Name = "God Parts V32 | The Overlord",
     LoadingTitle = "Initializing God Parts...",
-    LoadingSubtitle = "Eliminating CPU bottlenecks...",
+    LoadingSubtitle = "Injecting Overlord Protocols...",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "GodPartsConfig",
@@ -37,7 +39,7 @@ local Window = Rayfield:CreateWindow({
 if LocalPlayer.Name == "HeavenlyReminiscence" then
     Rayfield:Notify({
         Title = "Welcome back, Master",
-        Content = "<font color='rgb(255, 255, 0)'>HeavenlyReminiscence</font> recognized. CPU load reduced by 99%.",
+        Content = "<font color='rgb(255, 255, 0)'>HeavenlyReminiscence</font> recognized. All systems online.",
         Duration = 5,
         Image = 4483362458,
     })
@@ -74,6 +76,8 @@ local lockedPlayer = nil
 local flyEnabled = false
 local flySpeed = 50
 local noclipEnabled = false
+local godModeEnabled = false
+local godModeConnection = nil
 local flyBV, flyBG
 local inputW, inputA, inputS, inputD, inputSpace, inputCtrl = false, false, false, false, false, false
 
@@ -245,8 +249,10 @@ local function removePart(part)
     partFireData[part] = nil 
     if carriedPart == part then releaseTK() end
     
-    local antiGrav = part:FindFirstChild("GodPartsAntiGrav")
-    if antiGrav then antiGrav:Destroy() end
+    if part and part.Parent then
+        local antiGrav = part:FindFirstChild("GodPartsAntiGrav")
+        if antiGrav then antiGrav:Destroy() end
+    end
     
     if selectionBoxes[part] then selectionBoxes[part]:Destroy(); selectionBoxes[part] = nil end
     if trailsMap[part] then trailsMap[part][1]:Destroy(); trailsMap[part][2]:Destroy(); trailsMap[part][3]:Destroy(); trailsMap[part] = nil end
@@ -325,7 +331,36 @@ for _, player in ipairs(Players:GetPlayers()) do createESP(player) end
 Players.PlayerAdded:Connect(createESP)
 Players.PlayerRemoving:Connect(removeESP)
 
--- ==== FLY TOGGLE LOGIC ====
+-- ==== GOD MODE & LOCAL PLAYER LOGIC ====
+local function applyGodMode(character)
+    if not character then return end
+    local humanoid = character:WaitForChild("Humanoid", 3)
+    if humanoid then
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        if godModeConnection then godModeConnection:Disconnect() end
+        godModeConnection = RunService.Heartbeat:Connect(function()
+            if humanoid and humanoid.Parent and humanoid.Health > 0 then
+                humanoid.MaxHealth = math.huge
+                humanoid.Health = math.huge
+            end
+        end)
+    end
+end
+
+local function disableGodMode()
+    if godModeConnection then
+        godModeConnection:Disconnect()
+        godModeConnection = nil
+    end
+    local char = LocalPlayer.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        humanoid.MaxHealth = 100
+        humanoid.Health = 100
+    end
+end
+
 local function toggleFly()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -347,6 +382,39 @@ local function toggleFly()
         if flyBV then flyBV:Destroy() end
         if flyBG then flyBG:Destroy() end
     end
+end
+
+-- Persistent Respawn Handler
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5) -- Wait for character to fully load into workspace
+    if flyEnabled then toggleFly() end
+    if godModeEnabled then applyGodMode(char) end
+end)
+
+-- Click-to-TP Tool Generator
+local function giveTPTool()
+    local tool = Instance.new("Tool")
+    tool.Name = "Click TP"
+    tool.RequiresHandle = false
+    tool.ToolTip = "Click anywhere to teleport"
+    
+    tool.Activated:Connect(function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp and Mouse.Hit then
+            -- Teleport 3 studs above the click so you don't get stuck in the floor
+            hrp.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
+        end
+    end)
+    
+    tool.Parent = LocalPlayer.Backpack
+    
+    -- Add to StarterGear so it stays when you die
+    local starterGear = LocalPlayer:FindFirstChild("StarterGear")
+    if starterGear then
+        tool:Clone().Parent = starterGear
+    end
+    Rayfield:Notify({Title = "Tool Granted", Content = "Click TP Tool added to inventory.", Duration = 3})
 end
 
 -- ==== RAYFIELD TABS ====
@@ -383,9 +451,14 @@ TKTab:CreateLabel("Scroll Wheel: Push/Pull")
 TKTab:CreateSlider({ Name = "Throw Power", Range = {50, 2000}, Increment = 10, Suffix = "Force", CurrentValue = 500, Flag = "ThrowPowerSlider", Callback = function(Value) throwPower = Value end})
 
 -- Local Player Tab Controls
+LocalPlayerTab:CreateToggle({ Name = "God Mode (Infinite Health)", CurrentValue = false, Flag = "GodModeToggle", Callback = function(Value) 
+    godModeEnabled = Value 
+    if Value then applyGodMode(LocalPlayer.Character) else disableGodMode() end 
+end})
 LocalPlayerTab:CreateToggle({ Name = "Hover Fly Mode", CurrentValue = false, Flag = "FlyToggle", Callback = function(Value) flyEnabled = Value; toggleFly() end})
 LocalPlayerTab:CreateSlider({ Name = "Fly Speed", Range = {10, 200}, Increment = 5, Suffix = "Speed", CurrentValue = 50, Flag = "FlySpeedSlider", Callback = function(Value) flySpeed = Value end})
 LocalPlayerTab:CreateToggle({ Name = "Noclip", CurrentValue = false, Flag = "NoclipToggle", Callback = function(Value) noclipEnabled = Value end})
+LocalPlayerTab:CreateButton({ Name = "Give Click-to-TP Tool", Callback = function() giveTPTool() end})
 
 local tpDropdown = LocalPlayerTab:CreateDropdown({
     Name = "Teleport to Player",
@@ -424,7 +497,7 @@ AutoTab:CreateSlider({ Name = "Absorb Radius", Range = {10, 500}, Increment = 5,
 -- Aesthetics Tab
 AesthTab:CreateToggle({ Name = "Force Neon Material", CurrentValue = false, Flag = "ForceNeon", Callback = function(Value) 
     forceNeon = Value 
-    if not Value then for _, p in pairs(parts) do p.Material = Enum.Material.Plastic end end
+    if not Value then for _, p in pairs(parts) do if p.Parent then p.Material = Enum.Material.Plastic end end end
 end})
 AesthTab:CreateToggle({ Name = "RGB Rainbow Mode", CurrentValue = false, Flag = "RainbowMode", Callback = function(Value) rainbowMode = Value end})
 AesthTab:CreateToggle({ Name = "Energy Sparks", CurrentValue = false, Flag = "SparksMode", Callback = function(Value) 
@@ -438,7 +511,7 @@ SettingsTab:CreateSlider({ Name = "Elevation Offset", Range = {-50, 200}, Increm
 SettingsTab:CreateSlider({ Name = "Rotation Speed", Range = {1, 50}, Increment = 1, Suffix = "Speed", CurrentValue = 10, Flag = "SpeedSlider", Callback = function(Value) rotationSpeed = Value end})
 SettingsTab:CreateDropdown({ Name = "Physics Motion", Options = {"Fluid", "Snap", "Ricochet"}, CurrentOption = {"Fluid"}, MultipleOptions = false, Flag = "MotionDropdown", Callback = function(Option) motionMode = Option[1] end})
 SettingsTab:CreateToggle({ Name = "Anti-Ground Clip (Prevents voiding)", CurrentValue = true, Flag = "AntiClipToggle", Callback = function(Value) antiClipEnabled = Value end})
-SettingsTab:CreateButton({ Name = "Release Swarm (Drop All Parts)", Callback = function() for i = #parts, 1, -1 do local p = parts[i]; p.CanQuery = true; removePart(p) end; parts = {}; Rayfield:Notify({Title = "Swarm Released", Content = "All parts dropped.", Duration = 3}) end})
+SettingsTab:CreateButton({ Name = "Release Swarm (Drop All Parts)", Callback = function() for i = #parts, 1, -1 do local p = parts[i]; if p then p.CanQuery = true; removePart(p) end end; parts = {}; Rayfield:Notify({Title = "Swarm Released", Content = "All parts dropped.", Duration = 3}) end})
 SettingsTab:CreateLabel("Press [K] to Hide/Show GUI completely")
 
 -- Visuals Tab Controls
@@ -622,6 +695,14 @@ end)
 RunService.Heartbeat:Connect(function()
     local currentTick = tick()
     
+    -- Memory Leak Prevention
+    for i = #parts, 1, -1 do
+        local p = parts[i]
+        if not p or not p.Parent or not p:IsDescendantOf(workspace) then
+            removePart(p)
+        end
+    end
+    
     -- Fly Physics Logic
     if flyEnabled and flyBV and flyBG then
         local cam = workspace.CurrentCamera
@@ -646,12 +727,16 @@ RunService.Heartbeat:Connect(function()
         local hue = (currentTick % 5) / 5
         local rgb = Color3.fromHSV(hue, 1, 1)
         for _, p in pairs(parts) do
-            p.Color = rgb
-            if forceNeon then p.Material = Enum.Material.Neon end
-            if sparksMap[p] then sparksMap[p].Color = ColorSequence.new(rgb) end
+            if p and p.Parent then
+                p.Color = rgb
+                if forceNeon then p.Material = Enum.Material.Neon end
+                if sparksMap[p] then sparksMap[p].Color = ColorSequence.new(rgb) end
+            end
         end
     elseif forceNeon then
-        for _, p in pairs(parts) do p.Material = Enum.Material.Neon end
+        for _, p in pairs(parts) do 
+            if p and p.Parent then p.Material = Enum.Material.Neon end 
+        end
     end
     
     for player, esp in pairs(espObjects) do
@@ -683,10 +768,12 @@ RunService.Heartbeat:Connect(function()
             local closestDist = 20 
             local mousePos = Mouse.Hit.Position
             for _, p in ipairs(parts) do
-                local dist = (p.Position - mousePos).Magnitude
-                if dist < closestDist and checkOwner(p) then
-                    closestDist = dist
-                    closestPart = p
+                if p and p.Parent then
+                    local dist = (p.Position - mousePos).Magnitude
+                    if dist < closestDist and checkOwner(p) then
+                        closestDist = dist
+                        closestPart = p
+                    end
                 end
             end
             hoveredPart = closestPart
@@ -719,7 +806,7 @@ RunService.Heartbeat:Connect(function()
             local bp = carriedPart:FindFirstChild("TK_BP")
             local bg = carriedPart:FindFirstChild("TK_BG")
             if bp then bp.Position = holdPos end
-            if bg then bg.CFrame = CFrame.lookAt(carriedPart.Position, cam.CFrame.Position) end
+            if bg then bg.CFrame = cam.CFrame end 
             
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -755,7 +842,7 @@ RunService.Heartbeat:Connect(function()
             if #parts > 0 then
                 minigunIndex = (minigunIndex % #parts) + 1
                 local partToFire = parts[minigunIndex]
-                if partToFire and partToFire ~= carriedPart then
+                if partToFire and partToFire.Parent and partToFire ~= carriedPart then
                     if fireMode == "Rain" then
                         local dropPos = Mouse.Hit.Position + Vector3.new(math.random(-15, 15), 100, math.random(-15, 15))
                         partToFire.CFrame = CFrame.new(dropPos)
@@ -784,11 +871,8 @@ RunService.Heartbeat:Connect(function()
         else return end
     end
 
-    -- OPTIMIZED RAYCAST: Fire exactly ONE raycast per frame from the swarm's center.
-    local globalFloorY = -workspace.FallenPartsDestroyHeight
-    if antiClipEnabled then 
-        globalFloorY = getFloorY(center) 
-    end
+    local floorY = -workspace.FallenPartsDestroyHeight
+    if antiClipEnabled then floorY = getFloorY(center) end
 
     local totalParts = #parts
     local timeOffset = currentTick * (rotationSpeed / 5)
@@ -868,7 +952,6 @@ RunService.Heartbeat:Connect(function()
                     local ring1Parts = math.ceil(totalParts / 4)
                     local ring2Parts = ring1Parts
                     local ring3Parts = ring1Parts
-                    local coreParts = totalParts - (ring1Parts * 3)
                     
                     if i <= ring1Parts then
                         local theta = (i / ring1Parts) * math.pi * 2 + (currentTick * rotationSpeed * 0.5)
@@ -1198,7 +1281,7 @@ RunService.Heartbeat:Connect(function()
             targetPos = targetPos + getJitter()
 
             if antiClipEnabled then
-                targetPos = Vector3.new(targetPos.X, math.max(targetPos.Y, globalFloorY + (part.Size.Y/2)), targetPos.Z)
+                targetPos = Vector3.new(targetPos.X, math.max(targetPos.Y, floorY + (part.Size.Y/2)), targetPos.Z)
             end
 
             local distanceVector = targetPos - part.Position
