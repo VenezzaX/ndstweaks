@@ -1,7 +1,4 @@
 loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'),true))()
-loadstring(game:HttpGet(('https://raw.githubusercontent.com/VenezzaX/GotoPunch/refs/heads/main/punch.lua'),true))()
-loadstring(game:HttpGet(('https://raw.githubusercontent.com/VenezzaX/emotes/refs/heads/main/tuffemotes.lua'),true))()
-loadstring(game:HttpGet(('https://raw.githubusercontent.com/VenezzaX/mutebutton/refs/heads/main/mutebutton.lua'),true))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
